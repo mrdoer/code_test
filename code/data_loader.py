@@ -152,15 +152,15 @@ class TrainDataLoader(object):
         """
         assert index_of_subclass < len(self.sub_class_dir), 'index_of_subclass should less than total classes'
         sub_class_dir_basename = self.sub_class_dir[index_of_subclass]
-	sub_class_dir_path = os.path.join(self.img_dir_path, sub_class_dir_basename)
-	sub_class_dir_path = sub_class_dir_path + '/img/'
-	sub_class_img_name = [img_name for img_name in os.listdir(sub_class_dir_path) if not img_name.find('.jpg') == -1]
-	#sub_class_img_name = [img_name for img_name in os.listdir(sub_class_dir_path) if not img_name.find('.JPEG') == -1] # for VID
-	sub_class_img_name = sorted(sub_class_img_name)
-	#print(sub_class_img_name)
+        sub_class_dir_path = os.path.join(self.img_dir_path, sub_class_dir_basename)
+        sub_class_dir_path = sub_class_dir_path + '/img/'
+        sub_class_img_name = [img_name for img_name in os.listdir(sub_class_dir_path) if not img_name.find('.jpg') == -1]
+	    #sub_class_img_name = [img_name for img_name in os.listdir(sub_class_dir_path) if not img_name.find('.JPEG') == -1] # for VID
+        sub_class_img_name = sorted(sub_class_img_name)
+	    #print(sub_class_img_name)
         sub_class_img_num = len(sub_class_img_name)
 
-        sub_class_gt_name  = 'groundtruth.txt'     # for VID/vot13 test 
+        sub_class_gt_name  = 'groundtruth.txt'     # for VID/vot13 test
         sub_class_gt_name  = 'groundtruth_rect.txt'  # for otb test
 
         # select template, detection
@@ -168,7 +168,7 @@ class TrainDataLoader(object):
         # detection_index= random.choice(range(self.max_inter)) + template_index
         template_index  = 0
         detection_index = template_index + 1
-        
+
         #print(template_index)
         template_name, detection_name  = sub_class_img_name[template_index], sub_class_img_name[detection_index]
         template_img_path, detection_img_path = osp.join(sub_class_dir_path, template_name), osp.join(sub_class_dir_path, detection_name)
