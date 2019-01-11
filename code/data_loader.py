@@ -13,6 +13,7 @@ import random
 from PIL import Image, ImageOps, ImageStat, ImageDraw
 from torchvision import datasets, transforms, utils
 import numpy as np
+import re
 def get_transform_for_train():
     transform_list = []
 
@@ -153,15 +154,17 @@ class TrainDataLoader(object):
         assert index_of_subclass < len(self.sub_class_dir), 'index_of_subclass should less than total classes'
         sub_class_dir_basename = self.sub_class_dir[index_of_subclass]
         sub_class_dir_path = os.path.join(self.img_dir_path, sub_class_dir_basename)
-        sub_class_dir_path = sub_class_dir_path + '/img/'
-        sub_class_img_name = [img_name for img_name in os.listdir(sub_class_dir_path) if not img_name.find('.jpg') == -1]
-	    #sub_class_img_name = [img_name for img_name in os.listdir(sub_class_dir_path) if not img_name.find('.JPEG') == -1] # for VID
+        sub_class_dir_path = sub_class_dir_path# + '/img/'
+        if 'IL' in sub_class_dir_path:
+            sub_class_img_name = [img_name for img_name in os.listdir(sub_class_dir_path) if not img_name.find('.JPEG') == -1]
+        else:
+            sub_class_img_name = [img_name for img_name in os.listdir(sub_class_dir_path) if not img_name.find('.jpg') == -1]
         sub_class_img_name = sorted(sub_class_img_name)
 	    #print(sub_class_img_name)
         sub_class_img_num = len(sub_class_img_name)
 
         sub_class_gt_name  = 'groundtruth.txt'     # for VID/vot13 test
-        sub_class_gt_name  = 'groundtruth_rect.txt'  # for otb test
+       # sub_class_gt_name  = 'groundtruth_rect.txt'  # for otb test
 
         # select template, detection
         # template_index = random.choice(range(0, sub_class_img_num - self.max_inter))
@@ -176,6 +179,7 @@ class TrainDataLoader(object):
         with open(gt_path, 'r') as f:
             lines = f.readlines()
 
+        lines = [re.sub('\t','',line) for line in lines]
         self.ret['template_img_path']    = template_img_path
         self.ret['detection_img_path']   = detection_img_path
         self.ret['template_target_x1y1wh'] = [int(float(i)) for i in lines[template_index].strip('\n').split(',')]

@@ -87,6 +87,7 @@ def main():
     for epoch in range(start, args.max_epoches):
         cur_lr = adjust_learning_rate(args.lr, optimizer, epoch, gamma=0.1)
         index_list = range(data_loader.__len__())
+        example_index = 0
         for example in range(args.max_batches):
             ret = data_loader.__get__(random.choice(index_list))
             template = ret['template_tensor'].cuda()
@@ -168,8 +169,9 @@ def main():
             else:
                 proposals = s
             # ++++++++++++++++++++ debug for class ++++++++++++++++++++++++++++++++++++
-            # print(score[pos_index])  # this should tend to be 1
-            # print(score[neg_index])  # this should tend to be 0
+            if example_index%1000 == 0:
+                print(score[pos_index])  # this should tend to be 1
+                print(score[neg_index])  # this should tend to be 0
 
 
             # ++++++++++++++++++++ debug for reg ++++++++++++++++++++++++++++++++++++++
@@ -218,9 +220,10 @@ def main():
                 index = np.argsort(proposals[:, 8])[::-1][0]
                 x1, y1, x2, y2, x3, y3, x4, y4, _ = proposals[index]
                 draw.line([(x1, y1), (x2, y2), (x3, y3), (x4, y4), (x1, y1)], width=3, fill='yellow')
-            #save_path = osp.join(tmp_dir, 'epoch_{:010d}_{:010d}_anchor_pred.jpg'.format(epoch, example))
-            #detection.save(save_path)
-
+            if example_index%1000 == 0:
+                save_path = osp.join(tmp_dir, 'epoch_{:010d}_{:010d}_anchor_pred.jpg'.format(epoch, example))
+                detection.save(save_path)
+            example_index = example_index+1
 
             # +++++++++++++++++++ v1.0 restore ++++++++++++++++++++++++++++++++++++++++
             ratio = ret['detection_cropped_resized_ratio']

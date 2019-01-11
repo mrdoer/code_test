@@ -12,7 +12,7 @@ import numpy as np
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import argparse
-from data_loader_new1 import TrainDataLoader
+from data_loader import TrainDataLoader
 from PIL import Image, ImageOps, ImageStat, ImageDraw
 from net import SiameseRPN
 from torch.nn import init
@@ -27,7 +27,7 @@ parser.add_argument('--checkpoint_path', default='/home/ly/chz/weights-0690000.p
 
 parser.add_argument('--max_epoches', default=100, type=int, metavar='N', help='number of total epochs to run')
 
-parser.add_argument('--max_batches', default=10000, type=int, metavar='N', help='number of batch in one epoch')
+parser.add_argument('--max_batches', default=1, type=int, metavar='N', help='number of batch in one epoch')
 
 parser.add_argument('--init_type',  default='xavier', type=str, metavar='INIT', help='init net')
 
@@ -72,13 +72,17 @@ def main():
         cout = cout.reshape(-1, 2)
         rout = rout.reshape(-1, 4)
         cout = cout.cpu().detach().numpy()
+        print('cout size: {}'.format(cout.shape))
         score = 1/(1 + np.exp(cout[:,1]-cout[:,0]))
+        print('score: {}, size: {}'.format(score,score.shape))
         diff   = rout.cpu().detach().numpy() #1445
         
-        num_proposals = 1
+        num_proposals = 15 
         score_64_index = np.argsort(score)[::-1][:num_proposals]
 
+        print('score_64_index: {}, size: {}'.format(score_64_index,score_64_index.shape))
         score64 = score[score_64_index]
+        print('score: {}'.format(score64))
         diffs64 = diff[score_64_index, :] 
         anchors64 = ret['anchors'][score_64_index]
         proposals_x = (anchors64[:, 0] + anchors64[:, 2] * diffs64[:, 0]).reshape(-1, 1)
