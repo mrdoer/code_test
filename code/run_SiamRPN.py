@@ -39,7 +39,7 @@ def generate_anchor(total_stride, scales, ratios, score_size):
     anchor = np.zeros((anchor_num, 4),  dtype=np.float32)
     size = total_stride * total_stride # 8 * 8
     count = 0
-    #这里相当于是计算了一个位置的anchor 
+    #这里相当于是计算了一个位置的anchor
     #这个位置各个尺度各个比例都算了wh ，xy 待定
     #每个位置都wh是确定的
     for ratio in ratios:
@@ -133,7 +133,7 @@ def tracker_eval(net, x_crop, z_crop, target_pos, target_sz, window, scale_z, p,
     penalty = np.exp(-(r_c * s_c - 1.) * p.penalty_k)
     pscore = penalty * score
 
-    # window float, 
+    # window float,
     pscore = pscore * (1 - p.window_influence) + window * p.window_influence
     best_pscore_id = np.argmax(pscore)
 
@@ -184,10 +184,8 @@ def SiamRPN_init(im, target_pos, target_sz, net):
     输入第一帧
     target_pos [center_x, center_y]
     target_sz  [w, h]
-    net 
-
-
-    return
+    net
+    return：
     state['im_h']
     state['im_w']
     state['p']  config for tracker
@@ -221,15 +219,15 @@ def SiamRPN_init(im, target_pos, target_sz, net):
     # 并且需要归一成正方形
     # detection不需要归一
     # w_ -> w + (w+h)/2
-    # h_ -> h + (w+h)/2 
+    # h_ -> h + (w+h)/2
     # s_ -> sqrt(w_ * h_)
     # target是实际bg 而s_z是相当于把bg变成了正方形
     wc_z = target_sz[0] + p.context_amount * sum(target_sz)
     hc_z = target_sz[1] + p.context_amount * sum(target_sz)
     s_z = round(np.sqrt(wc_z * hc_z))
-    
+
     scale_z = p.exemplar_size / s_z
-    d_search = (p.instance_size - p.exemplar_size) /2 
+    d_search = (p.instance_size - p.exemplar_size) /2
     pad = d_search / scale_z
     s_x = s_z + 2 * pad
     # initialize the exemplar
@@ -245,7 +243,7 @@ def SiamRPN_init(im, target_pos, target_sz, net):
 
 
     x_crop = Variable(get_subwindow_tracking(im, target_pos, p.instance_size, round(s_x), avg_chans).unsqueeze(0))
-    
+
     #net.temple(z.cuda())
     net(z.cuda(), x_crop.cuda())
     if p.windowing == 'cosine':

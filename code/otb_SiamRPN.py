@@ -78,7 +78,7 @@ if __name__ == '__main__':
 			im = cv2.imread(imgpath[0])
 			toks = list(map(int, toks))
 			print(toks)
-			cv2.rectangle(im,(toks[0], toks[1]),(toks[2],toks[3]),(0,255,0),3)	
+			cv2.rectangle(im,(toks[0], toks[1]),(toks[2],toks[3]),(0,255,0),3)
 			cv2.imshow('res',im)
 			cv2.waitKey(1)
 			cv2.imwrite('../tmp/0000.jpg',im)
@@ -111,10 +111,10 @@ if __name__ == '__main__':
 				print(res)
 				bbox.append(res)
 				res = list(map(int,res))
-				cv2.rectangle(im,(res[0], res[1]),(res[0]+res[2],res[1]+res[3]),(0,255,0),3)	
+				cv2.rectangle(im,(res[0], res[1]),(res[0]+res[2],res[1]+res[3]),(0,255,0),3)
 				cv2.imshow('res',im)
-				cv2.waitKey(1)	
-				cv2.imwrite('../tmp/'+imgs[-8:],im)		
+				cv2.waitKey(1)
+				cv2.imwrite('../tmp/'+imgs[-8:],im)
 				ttime=ttime+time.time()-ttime1
 
 			print ('Idx:%03d == total frame:%04d == speed:%03d fps'%(idx+1, totalframe, (totalframe-1)/ttime))

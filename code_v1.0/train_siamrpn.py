@@ -110,7 +110,6 @@ def main():
             optimizer.step()
             steps += 1
 
-
             cout = cout.cpu().detach().numpy()
             score = 1/(1 + np.exp(cout[:,0]-cout[:,1]))
 

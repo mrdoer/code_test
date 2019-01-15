@@ -3,4 +3,6 @@
 *.JPEG
 *.gz
 *.png
+*.pdf
+*.gv
 *.tar

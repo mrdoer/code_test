@@ -60,10 +60,10 @@ def main():
         start = checkpoint['epoch']
         model.load_state_dict(checkpoint['state_dict'])
 
-    """ test phase """        
-    index_list = range(data_loader.__len__()) 
+    """ test phase """
+    index_list = range(data_loader.__len__())
     for example in range(args.max_batches):
-        ret = data_loader.__get__(random.choice(index_list)) 
+        ret = data_loader.__get__(random.choice(index_list))
         template = ret['template_tensor'].cuda()
         detection= ret['detection_tensor'].cuda()
         pos_neg_diff = ret['pos_neg_diff_tensor'].cuda()
@@ -76,14 +76,14 @@ def main():
         score = 1/(1 + np.exp(cout[:,1]-cout[:,0]))
         print('score: {}, size: {}'.format(score,score.shape))
         diff   = rout.cpu().detach().numpy() #1445
-        
-        num_proposals = 15 
+
+        num_proposals = 15
         score_64_index = np.argsort(score)[::-1][:num_proposals]
 
         print('score_64_index: {}, size: {}'.format(score_64_index,score_64_index.shape))
         score64 = score[score_64_index]
         print('score: {}'.format(score64))
-        diffs64 = diff[score_64_index, :] 
+        diffs64 = diff[score_64_index, :]
         anchors64 = ret['anchors'][score_64_index]
         proposals_x = (anchors64[:, 0] + anchors64[:, 2] * diffs64[:, 0]).reshape(-1, 1)
         proposals_y = (anchors64[:, 1] + anchors64[:, 3] * diffs64[:, 1]).reshape(-1, 1)
@@ -110,20 +110,12 @@ def main():
             x1, y1, x2, y2 = x-w//2, y-h//2, x+w//2, y+h//2
             draw.line([(x1, y1), (x2, y1), (x2, y2), (x1, y2), (x1, y1)], width=1, fill='red')
         """ save detection template proposals"""
-
-
         save_path = os.path.join(ret['tmp_dir'], '6_pred_proposals', '{:04d}_2_proposals.jpg'.format(example))
         detection.save(save_path)
 
         print('save at {}'.format(save_path))
             # restore
-
-
-
-
         """
-
-
             predictions = (cout, rout)
             targets = pos_neg_diff
 
@@ -131,11 +123,8 @@ def main():
             loss = closs + rloss
             closses.update(closs.cpu().item())
             rlosses.update(rloss.cpu().item())
-
-
-
             print("epoch:{:04d} example:{:06d} lr:{:.2f} closs:{:.2f}\trloss:{:.2f}".format(epoch, example, cur_lr, closses.avg, rlosses.avg))
-    
+
         if epoch % 5 == 0 :
             file_path = os.path.join(args.weight_dir, 'epoch_{:04d}_weights.pth.tar'.format(epoch))
             state = {
@@ -162,7 +151,7 @@ def init_weights(net, init_type='normal', gain=0.02):
                 init.orthogonal_(m.weight.data, gain=gain)
             else:
                 raise NotImplementedError('initialization method [%s] is not implemented' % init_type)
-            
+
             if hasattr(m, 'bias') and m.bias is not None:
                 init.constant_(m.bias.data, 0.0)
         elif classname.find('BatchNorm2d') != -1:
@@ -192,11 +181,11 @@ class MultiBoxLoss(nn.Module):
         else:
             rout_pos = rout[pos_index]
             diff_pos = diff[pos_index]
-            
+
             #print(rout_pos)
             #print(diff_pos)
             rloss = self.rloss(rout_pos, diff_pos) #16
-        return closs/64, rloss/16 
+        return closs/64, rloss/16
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -224,5 +213,5 @@ def adjust_learning_rate(lr, optimizer, epoch, gamma=0.1):
 
 if __name__ == '__main__':
     main()
- 
+
 
