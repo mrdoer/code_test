@@ -43,12 +43,11 @@ class DenseSiameseRPN(nn.Module):
 
             coutput = F.conv2d(cinput, ckernal)
             routput = F.conv2d(rinput, rkernal)
-            """
-            print('++++++++++++++++++++++++++++++++++++++++++++++++++')
-            print('c branch conv1 template  weight', self.conv1.weight[0,0,0,0])
-            print('c branch conv3 detection weight', self.conv3.weight[0,0,0,0])
-            """
+
+            coutput = coutput.squeeze().permute(1,2,0).reshape(-1, 2)
+            routput = routput.squeeze().permute(1,2,0).reshape(-1, 4)
             return coutput, routput
+
     def resume(self, weight):
         checkpoint = torch.load(weight)
         self.load_state_dict(checkpoint)

@@ -168,11 +168,11 @@ class TrainDataLoader(object):
         sub_class_dir_path = os.path.join(self.img_dir_path, sub_class_dir_basename)
         #print('sub_class_dir_path: {}'.format(sub_class_dir_path))
         sub_class_img_name = [img_name for img_name in os.listdir(sub_class_dir_path) if not img_name.find('.jpg') == -1]
-        #sub_class_img_name = [img_name for img_name in os.listdir(sub_class_dir_path) if not img_name.find('.JPEG') == -1]
+        # sub_class_img_name = [img_name for img_name in os.listdir(sub_class_dir_path) if not img_name.find('.JPEG') == -1]
         sub_class_img_name = sorted(sub_class_img_name)
         sub_class_img_num  = len(sub_class_img_name)
         #print('sub_class_img_num: {}'.format(sub_class_img_num))
-        sub_class_gt_name  = 'groundtruth.txt'
+        sub_class_gt_name  = 'groundtruth_rect.txt'
 
         # select template, detection
         # ++++++++++++++++++++++++++++ add break in sequeence [0,0,0,0] ++++++++++++++++++++++++++++++++++

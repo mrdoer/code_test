@@ -19,13 +19,13 @@ from PIL import Image, ImageOps, ImageStat, ImageDraw
 from data_loader import TrainDataLoader
 from net_ver2 import DenseSiameseRPN
 from torch.nn import init
-from shapely.geometry import Polygon
+# from shapely.geometry import Polygon
 
 # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 parser = argparse.ArgumentParser(description='PyTorch DenseSiameseRPN Training')
 
-parser.add_argument('--train_path', default='D:/Data_test/ILSVRC2015/Data/VID/train/ILSVRC2015_VID_train_0000/', metavar='DIR',help='path to dataset')
+parser.add_argument('--train_path', default='F:/vot-data/vot2014/', metavar='DIR',help='path to dataset')
 #/home/ly/chz/ILSVRC2015/Data/VID/train/ILSVRC2015_VID_train_0000
 parser.add_argument('--weight_dir', default='F:/caffe-master/model/dsrpn/', metavar='DIR',help='path to weight')
 
@@ -49,6 +49,7 @@ def main():
     """ train dataloader """
     args = parser.parse_args()
     data_loader = TrainDataLoader(args.train_path, check = args.debug)
+    # print('build training data loader...')
     if not os.path.exists(args.weight_dir):
         os.makedirs(args.weight_dir)
 
@@ -59,13 +60,15 @@ def main():
             args.max_batches += len(os.listdir(dir_path))
     print('max_batches: {}'.format(args.max_batches))
     """ Model on gpu """
+    # print('build model...')
     model = DenseSiameseRPN()
     # model = model.cuda()
-    model = model()
     # cudnn.benchmark = True
 
     """ loss and optimizer """
+    # print('build loss...')
     criterion = MultiBoxLoss()
+    # print('build optimizer...')
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay = args.weight_decay)
 
     """ load weights """
@@ -94,12 +97,16 @@ def main():
         for example in range(args.max_batches):
             ret = data_loader.__get__(random.choice(index_list))
             template = ret['template_tensor']
+            # print('  template size: {}'.format(template.shape))
             detection= ret['detection_tensor']
+            # print('  detection size: {}'.format(detection.shape))
             pos_neg_diff = ret['pos_neg_diff_tensor']
+            # print('  pos_neg_diff size: {}'.format(pos_neg_diff.shape))
             # template = ret['template_tensor'].cuda()
             # detection= ret['detection_tensor'].cuda()
             # pos_neg_diff = ret['pos_neg_diff_tensor'].cuda()
             cout, rout = model(template, detection)
+            # print('  cout size: {}, rout size: {}'.format(cout.shape,rout.shape))
             predictions, targets = (cout, rout), pos_neg_diff
             closs, rloss, loss, reg_pred, reg_target, pos_index, neg_index = criterion(predictions, targets)
             closs_ = closs.cpu().item()
@@ -147,40 +154,13 @@ def main():
             score_old = score
             score = pscore #from 0.2 - 0.7
 
-            # +++++++++++++++++++ v1.0 add nms ++++++++++++++++++++++++++++++++++++++++++++
-            nms = False
-            nms_threshold = 0.6
-            start = time.time()
-            anchors = ret['anchors'].copy()
-            x = anchors[:,0] + anchors[:, 2] * reg_pred[:, 0].cpu().detach().numpy()
-            y = anchors[:,1] + anchors[:, 3] * reg_pred[:, 1].cpu().detach().numpy()
-            w = anchors[:,2] * np.exp(reg_pred[:, 2].cpu().detach().numpy())
-            h = anchors[:,3] * np.exp(reg_pred[:, 3].cpu().detach().numpy())
-            x1 = np.clip(x-w//2, 0, 256)
-            x2 = np.clip(x+w//2, 0, 256)
-            x3 = np.clip(x+w//2, 0, 256)
-            x4 = np.clip(x-w//2, 0, 256)
-            y1 = np.clip(y-h//2, 0, 256)
-            y2 = np.clip(y-h//2, 0, 256)
-            y3 = np.clip(y+h//2, 0, 256)
-            y4 = np.clip(y+h//2, 0, 256)
-            slist = map(reshape, [x1, y1, x2, y2, x3, y3, x4, y4, score])
-            s = np.hstack(slist)
-            maxscore = max(s[:, 8])
-            if nms and maxscore > nms_threshold:
-                proposals = standard_nms(s, nms_threshold)
-                proposals = proposals if proposals.shape[0] != 0 else s
-                print('nms spend {:.2f}ms'.format(1000*(time.time()-start)))
-            else:
-                proposals = s
             # ++++++++++++++++++++ debug for class ++++++++++++++++++++++++++++++++++++
             if example_index%1000 == 0:
-                print(score[pos_index])  # this should tend to be 1
-                print(score[neg_index])  # this should tend to be 0
-
+                print(score[pos_index][:5])  # this should tend to be 1
+                print(score[neg_index][:5])  # this should tend to be 0
 
             # ++++++++++++++++++++ debug for reg ++++++++++++++++++++++++++++++++++++++
-            tmp_dir = '/home/ly/chz/Siamese-RPN-pytorch/code_v1.0/tmp/visualization/7_check_train_phase_debug_pos_anchors'
+            tmp_dir = './tmp/visualization/7_check_train_phase_debug_pos_anchors'
             if not os.path.exists(tmp_dir):
                 os.makedirs(tmp_dir)
             detection = ret['detection_cropped_resized'].copy()
@@ -220,11 +200,6 @@ def main():
                 x1, y1, x3, y3 = x1s[0], y1s[0], x2s[0], y2s[0]
             else:
                 x1, y1, x3, y3 = 0, 0, 0, 0
-            # top1 proposal after nms (white)
-            if nms:
-                index = np.argsort(proposals[:, 8])[::-1][0]
-                x1, y1, x2, y2, x3, y3, x4, y4, _ = proposals[index]
-                draw.line([(x1, y1), (x2, y2), (x3, y3), (x4, y4), (x1, y1)], width=3, fill='yellow')
             if example_index%1000 == 0:
                 save_path = osp.join(tmp_dir, 'epoch_{:010d}_{:010d}_anchor_pred.jpg'.format(epoch, example))
                 detection.save(save_path)
@@ -262,35 +237,6 @@ def main():
             }
             torch.save(state, file_path)
 
-def intersection(g, p):
-    g = Polygon(g[:8].reshape((4, 2)))
-    p = Polygon(p[:8].reshape((4, 2)))
-    if not g.is_valid or not p.is_valid:
-        return 0
-    inter = Polygon(g).intersection(Polygon(p)).area
-    union = g.area + p.area - inter
-    if union == 0:
-        return 0
-    else:
-        return inter/union
-
-def standard_nms(S, thres):
-    """ use pre_thres to filter """
-    index = np.where(S[:, 8] > thres)[0]
-    S = S[index] # ~ 100, 4
-
-    # Then use standard nms
-    order = np.argsort(S[:, 8])[::-1]
-    keep = []
-    while order.size > 0:
-        i = order[0]
-        keep.append(i)
-        ovr = np.array([intersection(S[i], S[t]) for t in order[1:]])
-
-        inds = np.where(ovr <= thres)[0]
-        order = order[inds+1]
-    return S[keep]
-
 def reshape(x):
     t = np.array(x, dtype = np.float32)
     return t.reshape(-1, 1)
@@ -324,11 +270,15 @@ class MultiBoxLoss(nn.Module):
         super(MultiBoxLoss, self).__init__()
 
     def forward(self, predictions, targets):
-        print('+++++++++++++++++++++++++++++++++++++++++++++++++++')
+        # print('MultiBoxLoss...')
         cout, rout = predictions
         """ class """
         class_pred, class_target = cout, targets[:, 0].long()
+        # print('    class_target size: {}'.format(class_target.shape))
+        # print(class_pred[1])
         pos_index , neg_index    = list(np.where(class_target == 1)[0]), list(np.where(class_target == 0)[0])
+        # print('    pos_index: {}'.format(pos_index))
+        # print('    neg_index: {}'.format(neg_index))
         pos_num, neg_num         = len(pos_index), len(neg_index)
         class_pred, class_target = class_pred[pos_index + neg_index], class_target[pos_index + neg_index]
 
