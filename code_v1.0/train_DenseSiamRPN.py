@@ -25,7 +25,7 @@ from torch.nn import init
 
 parser = argparse.ArgumentParser(description='PyTorch DenseSiameseRPN Training')
 
-parser.add_argument('--train_path', default='F:/vot-data/vot2014/', metavar='DIR',help='path to dataset')
+parser.add_argument('--train_path', default='D:/Data_test/ILSVRC2015/Data/VID/train/ILSVRC2015_VID_train_0000/', metavar='DIR',help='path to dataset')
 #/home/ly/chz/ILSVRC2015/Data/VID/train/ILSVRC2015_VID_train_0000
 parser.add_argument('--weight_dir', default='F:/caffe-master/model/dsrpn/', metavar='DIR',help='path to weight')
 
