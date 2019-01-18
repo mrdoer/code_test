@@ -25,15 +25,15 @@ from torch.nn import init
 
 parser = argparse.ArgumentParser(description='PyTorch DenseSiameseRPN Training')
 
-parser.add_argument('--train_path', default='D:/Data_test/ILSVRC2015/Data/VID/train/ILSVRC2015_VID_train_0000/', metavar='DIR',help='path to dataset')
-#/home/ly/chz/ILSVRC2015/Data/VID/train/ILSVRC2015_VID_train_0000
-parser.add_argument('--weight_dir', default='F:/caffe-master/model/dsrpn/', metavar='DIR',help='path to weight')
+parser.add_argument('--train_path', default='D:/ILSVRC2015_VID/ILSVRC2015/Data/VID/train/a/', metavar='DIR',help='path to dataset')
+#D:/ILSVRC2015_VID/ILSVRC2015/Data/VID/train/a/
+parser.add_argument('--weight_dir', default='D:/Huizhi/model/dsrpn/', metavar='DIR',help='path to weight')
 
 parser.add_argument('--checkpoint_path', default=None, help='resume')
 #/home/ly/chz/weights-0690000.pth.tar
 parser.add_argument('--max_epoches', default=10000, type=int, metavar='N', help='number of total epochs to run')
 
-parser.add_argument('--max_batches', default=0, type=int, metavar='N', help='number of batch in one epoch')
+parser.add_argument('--max_batches', default=50, type=int, metavar='N', help='number of batch in one epoch')
 
 parser.add_argument('--init_type',  default='xavier', type=str, metavar='INIT', help='init net')
 
@@ -49,28 +49,20 @@ def main():
     """ train dataloader """
     args = parser.parse_args()
     data_loader = TrainDataLoader(args.train_path, check = args.debug)
-    # print('build training data loader...')
     if not os.path.exists(args.weight_dir):
         os.makedirs(args.weight_dir)
-
     """ compute max_batches """
     for root, dirs, files in os.walk(args.train_path):
         for dirname in dirs:
             dir_path = os.path.join(root, dirname)
             args.max_batches += len(os.listdir(dir_path))
     print('max_batches: {}'.format(args.max_batches))
-    """ Model on gpu """
-    # print('build model...')
     model = DenseSiameseRPN()
-    # model = model.cuda()
-    # cudnn.benchmark = True
-
+    model = model.cuda()
+    cudnn.benchmark = True
     """ loss and optimizer """
-    # print('build loss...')
     criterion = MultiBoxLoss()
-    # print('build optimizer...')
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay = args.weight_decay)
-
     """ load weights """
     init_weights(model)
     if not args.checkpoint_path == None:
@@ -85,7 +77,6 @@ def main():
             init_weights(model)
     else:
         start = 0
-
     """ train phase """
     closses, rlosses, tlosses = AverageMeter(), AverageMeter(), AverageMeter()
     steps = 0
@@ -96,17 +87,10 @@ def main():
         example_index = 0
         for example in range(args.max_batches):
             ret = data_loader.__get__(random.choice(index_list))
-            template = ret['template_tensor']
-            # print('  template size: {}'.format(template.shape))
-            detection= ret['detection_tensor']
-            # print('  detection size: {}'.format(detection.shape))
-            pos_neg_diff = ret['pos_neg_diff_tensor']
-            # print('  pos_neg_diff size: {}'.format(pos_neg_diff.shape))
-            # template = ret['template_tensor'].cuda()
-            # detection= ret['detection_tensor'].cuda()
-            # pos_neg_diff = ret['pos_neg_diff_tensor'].cuda()
+            template = ret['template_tensor'].cuda()
+            detection= ret['detection_tensor'].cuda()
+            pos_neg_diff = ret['pos_neg_diff_tensor'].cuda()
             cout, rout = model(template, detection)
-            # print('  cout size: {}, rout size: {}'.format(cout.shape,rout.shape))
             predictions, targets = (cout, rout), pos_neg_diff
             closs, rloss, loss, reg_pred, reg_target, pos_index, neg_index = criterion(predictions, targets)
             closs_ = closs.cpu().item()
@@ -123,108 +107,108 @@ def main():
             optimizer.step()
             steps += 1
 
-            cout = cout.cpu().detach().numpy()
-            score = 1/(1 + np.exp(cout[:,0]-cout[:,1]))
+            # cout = cout.cpu().detach().numpy()
+            # score = 1/(1 + np.exp(cout[:,0]-cout[:,1]))
 
-            # ++++++++++++ post process below just for debug ++++++++++++++++++++++++
-            # ++++++++++++++++++++ v1.0 add penalty +++++++++++++++++++++++++++++++++
-            if ret['pos_anchors'] is not None:
-                penalty_k = 0.055
-                tx, ty, tw, th = ret['template_target_xywh'].copy()
-                tw *= ret['template_cropprd_resized_ratio']
-                th *= ret['template_cropprd_resized_ratio']
+            ##++++++++++++ post process below just for debug ++++++++++++++++++++++++
+            ##++++++++++++++++++++ v1.0 add penalty +++++++++++++++++++++++++++++++++
+            # if ret['pos_anchors'] is not None:
+                # penalty_k = 0.055
+                # tx, ty, tw, th = ret['template_target_xywh'].copy()
+                # tw *= ret['template_cropprd_resized_ratio']
+                # th *= ret['template_cropprd_resized_ratio']
 
-                anchors = ret['anchors'].copy()
-                w = anchors[:,2] * np.exp(reg_pred[:, 2].cpu().detach().numpy())
-                h = anchors[:,3] * np.exp(reg_pred[:, 3].cpu().detach().numpy())
+                # anchors = ret['anchors'].copy()
+                # w = anchors[:,2] * np.exp(reg_pred[:, 2].cpu().detach().numpy())
+                # h = anchors[:,3] * np.exp(reg_pred[:, 3].cpu().detach().numpy())
 
-                eps = 1e-2
-                change_w = np.maximum(w/(tw+eps), tw/(w+eps))
-                change_h = np.maximum(h/(th+eps), th/(h+eps))
-                penalty = np.exp(-(change_w + change_h - 1) * penalty_k)
-                pscore = score * penalty
-            else:
-                pscore = score
+                # eps = 1e-2
+                # change_w = np.maximum(w/(tw+eps), tw/(w+eps))
+                # change_h = np.maximum(h/(th+eps), th/(h+eps))
+                # penalty = np.exp(-(change_w + change_h - 1) * penalty_k)
+                # pscore = score * penalty
+            # else:
+                # pscore = score
 
-            # +++++++++++++++++++ v1.0 add window default cosine ++++++++++++++++++++++
-            score_size = 17
-            window_influence = 0.42
-            window = (np.outer(np.hanning(score_size), np.hanning(score_size)).reshape(17,17,1) + np.zeros((1, 1, 5))).reshape(-1)
-            pscore = pscore * (1 - window_influence) + window * window_influence
-            score_old = score
-            score = pscore #from 0.2 - 0.7
+            ##+++++++++++++++++++ v1.0 add window default cosine ++++++++++++++++++++++
+            # score_size = 17
+            # window_influence = 0.42
+            # window = (np.outer(np.hanning(score_size), np.hanning(score_size)).reshape(17,17,1) + np.zeros((1, 1, 5))).reshape(-1)
+            # pscore = pscore * (1 - window_influence) + window * window_influence
+            # score_old = score
+            # score = pscore #from 0.2 - 0.7
 
-            # ++++++++++++++++++++ debug for class ++++++++++++++++++++++++++++++++++++
-            if example_index%1000 == 0:
-                print(score[pos_index][:5])  # this should tend to be 1
-                print(score[neg_index][:5])  # this should tend to be 0
+            ## ++++++++++++++++++++ debug for class ++++++++++++++++++++++++++++++++++++
+            # if example_index%1000 == 0:
+                # print(score[pos_index][:5])  # this should tend to be 1
+                # print(score[neg_index][:5])  # this should tend to be 0
 
-            # ++++++++++++++++++++ debug for reg ++++++++++++++++++++++++++++++++++++++
-            tmp_dir = './tmp/visualization/7_check_train_phase_debug_pos_anchors'
-            if not os.path.exists(tmp_dir):
-                os.makedirs(tmp_dir)
-            detection = ret['detection_cropped_resized'].copy()
-            draw = ImageDraw.Draw(detection)
-            pos_anchors = ret['pos_anchors'].copy() if ret['pos_anchors'] is not None else None
+            ## ++++++++++++++++++++ debug for reg ++++++++++++++++++++++++++++++++++++++
+            # tmp_dir = './tmp/visualization/7_check_train_phase_debug_pos_anchors'
+            # if not os.path.exists(tmp_dir):
+                # os.makedirs(tmp_dir)
+            # detection = ret['detection_cropped_resized'].copy()
+            # draw = ImageDraw.Draw(detection)
+            # pos_anchors = ret['pos_anchors'].copy() if ret['pos_anchors'] is not None else None
 
-            if pos_anchors is not None:
+            # if pos_anchors is not None:
                 # draw pos anchors
-                x = pos_anchors[:, 0]
-                y = pos_anchors[:, 1]
-                w = pos_anchors[:, 2]
-                h = pos_anchors[:, 3]
-                x1s, y1s, x2s, y2s = x - w//2, y - h//2, x + w//2, y + h//2
-                for i in range(16):
-                    x1, y1, x2, y2 = x1s[i], y1s[i], x2s[i], y2s[i]
-                    draw.line([(x1, y1), (x2, y1), (x2, y2), (x1, y2), (x1, y1)], width=1, fill='white') # pos anchor
+                # x = pos_anchors[:, 0]
+                # y = pos_anchors[:, 1]
+                # w = pos_anchors[:, 2]
+                # h = pos_anchors[:, 3]
+                # x1s, y1s, x2s, y2s = x - w//2, y - h//2, x + w//2, y + h//2
+                # for i in range(16):
+                    # x1, y1, x2, y2 = x1s[i], y1s[i], x2s[i], y2s[i]
+                    # draw.line([(x1, y1), (x2, y1), (x2, y2), (x1, y2), (x1, y1)], width=1, fill='white') # pos anchor
 
                 # pos anchor transform to red box after prediction
-                x = pos_anchors[:,0] + pos_anchors[:, 2] * reg_pred[pos_index, 0].cpu().detach().numpy()
-                y = pos_anchors[:,1] + pos_anchors[:, 3] * reg_pred[pos_index, 1].cpu().detach().numpy()
-                w = pos_anchors[:,2] * np.exp(reg_pred[pos_index, 2].cpu().detach().numpy())
-                h = pos_anchors[:,3] * np.exp(reg_pred[pos_index, 3].cpu().detach().numpy())
-                x1s, y1s, x2s, y2s = x - w//2, y - h//2, x + w//2, y + h//2
-                for i in range(16):
-                    x1, y1, x2, y2 = x1s[i], y1s[i], x2s[i], y2s[i]
-                    draw.line([(x1, y1), (x2, y1), (x2, y2), (x1, y2), (x1, y1)], width=1, fill='red')  # predict(white -> red)
+                # x = pos_anchors[:,0] + pos_anchors[:, 2] * reg_pred[pos_index, 0].cpu().detach().numpy()
+                # y = pos_anchors[:,1] + pos_anchors[:, 3] * reg_pred[pos_index, 1].cpu().detach().numpy()
+                # w = pos_anchors[:,2] * np.exp(reg_pred[pos_index, 2].cpu().detach().numpy())
+                # h = pos_anchors[:,3] * np.exp(reg_pred[pos_index, 3].cpu().detach().numpy())
+                # x1s, y1s, x2s, y2s = x - w//2, y - h//2, x + w//2, y + h//2
+                # for i in range(16):
+                    # x1, y1, x2, y2 = x1s[i], y1s[i], x2s[i], y2s[i]
+                    # draw.line([(x1, y1), (x2, y1), (x2, y2), (x1, y2), (x1, y1)], width=1, fill='red')  # predict(white -> red)
 
                 # pos anchor should be transformed to green gt box, if red and green is same, it is overfitting
-                x = pos_anchors[:,0] + pos_anchors[:, 2] * reg_target[pos_index, 0].cpu().detach().numpy()
-                y = pos_anchors[:,1] + pos_anchors[:, 3] * reg_target[pos_index, 1].cpu().detach().numpy()
-                w = pos_anchors[:,2] * np.exp(reg_target[pos_index, 2].cpu().detach().numpy())
-                h = pos_anchors[:,3] * np.exp(reg_target[pos_index, 3].cpu().detach().numpy())
-                x1s, y1s, x2s, y2s = x - w//2, y-h//2, x + w//2, y + h//2
-                for i in range(16):
-                    x1, y1, x2, y2 = x1s[i], y1s[i], x2s[i], y2s[i]
-                    draw.line([(x1, y1), (x2, y1), (x2, y2), (x1, y2), (x1, y1)], width=1, fill='green') # gt  (white -> green)
-                x1, y1, x3, y3 = x1s[0], y1s[0], x2s[0], y2s[0]
-            else:
-                x1, y1, x3, y3 = 0, 0, 0, 0
-            if example_index%1000 == 0:
-                save_path = osp.join(tmp_dir, 'epoch_{:010d}_{:010d}_anchor_pred.jpg'.format(epoch, example))
-                detection.save(save_path)
-            example_index = example_index+1
+                # x = pos_anchors[:,0] + pos_anchors[:, 2] * reg_target[pos_index, 0].cpu().detach().numpy()
+                # y = pos_anchors[:,1] + pos_anchors[:, 3] * reg_target[pos_index, 1].cpu().detach().numpy()
+                # w = pos_anchors[:,2] * np.exp(reg_target[pos_index, 2].cpu().detach().numpy())
+                # h = pos_anchors[:,3] * np.exp(reg_target[pos_index, 3].cpu().detach().numpy())
+                # x1s, y1s, x2s, y2s = x - w//2, y-h//2, x + w//2, y + h//2
+                # for i in range(16):
+                    # x1, y1, x2, y2 = x1s[i], y1s[i], x2s[i], y2s[i]
+                    # draw.line([(x1, y1), (x2, y1), (x2, y2), (x1, y2), (x1, y1)], width=1, fill='green') # gt  (white -> green)
+                # x1, y1, x3, y3 = x1s[0], y1s[0], x2s[0], y2s[0]
+            # else:
+                # x1, y1, x3, y3 = 0, 0, 0, 0
+            # if example_index%1000 == 0:
+                # save_path = osp.join(tmp_dir, 'epoch_{:010d}_{:010d}_anchor_pred.jpg'.format(epoch, example))
+                # detection.save(save_path)
+            # example_index = example_index+1
 
             # +++++++++++++++++++ v1.0 restore ++++++++++++++++++++++++++++++++++++++++
-            ratio = ret['detection_cropped_resized_ratio']
-            detection_cropped = ret['detection_cropped'].copy()
-            detection_cropped_resized = ret['detection_cropped_resized'].copy()
-            original = Image.open(ret['detection_img_path'])
-            x_, y_ = ret['detection_tlcords_of_original_image']
-            draw = ImageDraw.Draw(original)
-            w, h = original.size
+            # ratio = ret['detection_cropped_resized_ratio']
+            # detection_cropped = ret['detection_cropped'].copy()
+            # detection_cropped_resized = ret['detection_cropped_resized'].copy()
+            # original = Image.open(ret['detection_img_path'])
+            # x_, y_ = ret['detection_tlcords_of_original_image']
+            # draw = ImageDraw.Draw(original)
+            # w, h = original.size
             """ un resized """
-            x1, y1, x3, y3 = x1/ratio, y1/ratio, y3/ratio, y3/ratio
+            # x1, y1, x3, y3 = x1/ratio, y1/ratio, y3/ratio, y3/ratio
 
             """ un cropped """
-            x1 = np.clip(x_ + x1, 0, w-1).astype(np.int32) # uncropped #target_of_original_img
-            y1 = np.clip(y_ + y1, 0, h-1).astype(np.int32)
-            x3 = np.clip(x_ + x3, 0, w-1).astype(np.int32)
-            y3 = np.clip(y_ + y3, 0, h-1).astype(np.int32)
+            # x1 = np.clip(x_ + x1, 0, w-1).astype(np.int32) # uncropped #target_of_original_img
+            # y1 = np.clip(y_ + y1, 0, h-1).astype(np.int32)
+            # x3 = np.clip(x_ + x3, 0, w-1).astype(np.int32)
+            # y3 = np.clip(y_ + y3, 0, h-1).astype(np.int32)
 
-            draw.line([(x1, y1), (x3, y1), (x3, y3), (x1, y3), (x1, y1)], width=3, fill='yellow')
-            #save_path = osp.join(tmp_dir, 'epoch_{:010d}_{:010d}_restore.jpg'.format(epoch, example))
-            #original.save(save_path)
+            # draw.line([(x1, y1), (x3, y1), (x3, y3), (x1, y3), (x1, y1)], width=3, fill='yellow')
+            # save_path = osp.join(tmp_dir, 'epoch_{:010d}_{:010d}_restore.jpg'.format(epoch, example))
+            # original.save(save_path)
 
             print("Epoch:{:04d}\texample:{:06d}/{:06d}({:.2f})%\tsteps:{:010d}\tlr:{:.7f}\tcloss:{:.4f}\trloss:{:.4f}\ttloss:{:.4f}".format(epoch, example+1, args.max_batches, 100*(example+1)/args.max_batches, steps, cur_lr, closses.avg, rlosses.avg, tlosses.avg ))
 
@@ -276,7 +260,7 @@ class MultiBoxLoss(nn.Module):
         class_pred, class_target = cout, targets[:, 0].long()
         # print('    class_target size: {}'.format(class_target.shape))
         # print(class_pred[1])
-        pos_index , neg_index    = list(np.where(class_target == 1)[0]), list(np.where(class_target == 0)[0])
+        pos_index , neg_index    = list(np.where(class_target.cpu().numpy() == 1)[0]), list(np.where(class_target.cpu().numpy() == 0)[0])
         # print('    pos_index: {}'.format(pos_index))
         # print('    neg_index: {}'.format(neg_index))
         pos_num, neg_num         = len(pos_index), len(neg_index)
